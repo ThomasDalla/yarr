@@ -7,16 +7,14 @@
 //! worth exposing directly to MCP clients.
 
 use rmcp::model::{
-    CacheScope, GetPromptRequestParams, GetPromptResult, ListPromptsResult, Prompt, PromptMessage,
-    Role,
+    GetPromptRequestParams, GetPromptResult, ListPromptsResult, Prompt, PromptMessage, Role,
 };
 
-/// SEP-2549 (`ttlMs`/`cacheScope`) is required on `prompts/list` for clients that
-/// negotiate protocol version `2026-07-28` (see `rmcp_server.rs`'s `list_tools`
-/// for the sibling fix). The prompt list is static per binary, so a long TTL is
-/// safe.
-const PROMPTS_LIST_TTL_MS: u64 = 600_000;
-
+/// Plain prompt data — no SEP-2549 cache hints (`ttlMs`/`cacheScope`) here.
+/// Those are applied uniformly by `rmcp_server.rs`'s `with_cache_hints`, which
+/// also decides the freshness/scope policy and gates it on the caller's
+/// negotiated protocol version; keeping that entirely out of this module lets
+/// it stay a plain data source.
 pub(super) fn list_prompts() -> ListPromptsResult {
     ListPromptsResult {
         prompts: vec![Prompt::new(
@@ -29,8 +27,6 @@ pub(super) fn list_prompts() -> ListPromptsResult {
         )],
         ..Default::default()
     }
-    .with_ttl_ms(PROMPTS_LIST_TTL_MS)
-    .with_cache_scope(CacheScope::Public)
 }
 
 pub(super) fn get_prompt(request: GetPromptRequestParams) -> anyhow::Result<GetPromptResult> {
